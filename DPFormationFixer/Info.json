@@ -1,0 +1,13 @@
+﻿{
+	"Id": "DPFormationFixer",
+    "DisplayName": "Formation Fixer for More Party Slots RT",
+    "Author": "DarthParametric",
+    "Version": "1.0.0",
+	"ManagerVersion": "0.25.0",
+	"Requirements": [],
+	"LoadAfter": [ "MorePartySlotsRT" ],
+	"AssemblyName": "DPFormationFixer.dll",
+	"EntryMethod": "DPFormationFixer.Main.Load",
+	"HomePage": "",
+	"Repository": ""
+}
