@@ -1,9 +1,8 @@
-﻿using HarmonyLib;
+﻿using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem;
 using Kingmaker.Code.UI.MVVM.View.Formation;
 using Kingmaker.Code.UI.MVVM.View.Formation.Base;
-using Kingmaker.Code.UI.MVVM.View.Formation.Console;
 using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
 using System.Reflection.Emit;
@@ -39,7 +38,7 @@ public static class Main {
         var BPStar = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("cdb4a0c6f7c2faf4f9bfb142ca4caee5");         // Formation_Custom_02
         var BPWaves = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a38b14ca3fb0c05409c5c8e45fb5687c");        // Formation_Custom_03
         var BPCircle = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("71bb427a43932424a803f68253d57197");       // Formation_Default
-        var BPDefault = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a198d360f0d0cc643a1b104d6c5346ac");      // Formation_Followers_Default
+        //var BPDefault = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a198d360f0d0cc643a1b104d6c5346ac");      // Formation_Followers_Default
 
         LogDebug("Patching blueprints.");
 
@@ -86,9 +85,7 @@ public static class Main {
                 }
                 Initialized = true;
 
-                Log.Log("Patching blueprints.");
-
-                // PatchFormationArrays();
+                PatchFormationArrays();
             }
             catch (Exception e)
             {
@@ -103,26 +100,83 @@ public static class Main {
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
+            /*
+            This in the method that sets the row offsets. It inserts an empty row if there is no off-tank. Original code:
+
+		    	formation.SetOffset(mainTank.Unit, Vector2.zero);
+			    vector -= new Vector2(0f, PartyAutoFormationHelper.SpaceY);
+			    if (offTank != null)
+			    {
+				    formation.SetOffset(offTank.Unit, vector);
+			    }
+			    vector -= new Vector2(0f, PartyAutoFormationHelper.SpaceY);
+
+                IL_0017: ldloc.0
+                IL_0018: ldc.r4     0
+                IL_001D: call       static System.Single Kingmaker.Formations.PartyAutoFormationHelper::get_SpaceY()
+                IL_0022: newobj     System.Void UnityEngine.Vector2::.ctor(System.Single x, System.Single y)
+                IL_0027: call       static UnityEngine.Vector2 UnityEngine.Vector2::op_Subtraction(UnityEngine.Vector2 a, UnityEngine.Vector2 b)
+                IL_002C: stloc.0
+                IL_002D: ldarg.2
+                IL_002E: brfalse => Label0
+
+            By moving the second vector assignment inside the if check, it should no longer create an unnecessary empty row when
+            no off-tank is present.
+            */
 
             CodeMatcher matcher = new(instructions);
+
+            matcher.MatchEndForward(
+                new CodeMatch(OpCodes.Ldarg_2),                                     // Load the offTank argument.
+                new CodeMatch(OpCodes.Brfalse_S)                                    // Break if false/null.
+            );
+
+            var jumpto = matcher.Operand;                                           // Store the jump label for the break.
+
+            matcher.RemoveInstruction()                                             // Remove the brfalse.
+                .Advance(-1)
+                .RemoveInstruction()                                                // Remove the ldarg.2.
+                .Advance(-6)                                                        // Move back to the start of the vector declaration block (ldloc.0).
+                .Insert([
+                    new CodeInstruction(OpCodes.Ldarg_2),                           // Add the ldarg.2.
+                    new CodeInstruction(OpCodes.Brfalse_S, jumpto)                  // Add the brfalse with the original jump label.
+                ]);
 
             return matcher.InstructionEnumeration();
         }
     }
 
-    /*
-    // Patch the Auto formation line setup to make it use wider rows (default is 4 or 3 max).
+    // Patch the Auto formation line setup to make it use the Wrath setup, adjusted for wider rows. The RT vanilla method puts everyone
+    // in a single line behind the tank.
     [HarmonyPatch(typeof(PartyAutoFormationHelper), nameof(PartyAutoFormationHelper.SetupLinePositions))]
     class Auto_Formation_Condenser_Patch_2
     {
-        //Prefix
-    }
-    */
+        static bool Prefix(PartyFormationAuto formation, ref Vector2 center, List<PartyAutoFormationHelper.UnitFormationData> line)
+        {
+            int i = 0;
+            int num = ((line.Count > 5) ? Math.Min(6, line.Count) : Math.Min(4, line.Count));
 
+            while (i < line.Count)
+            {
+                float num2 = -PartyAutoFormationHelper.SpaceX / 2f * (float)(num - 1);
+                for (int j = i; j < i + num; j++)
+                {
+                    Vector2 vector = center + new Vector2(num2, 0f);
+                    formation.SetOffset(line[j].Unit, vector);
+                    num2 += PartyAutoFormationHelper.SpaceX;
+                }
+                i += num;
+                num = ((line.Count > 5) ? Math.Min(12 - num, line.Count - i) : Math.Min(10 - num, line.Count - i));
+                center -= new Vector2(0f, PartyAutoFormationHelper.SpaceY);
+            }
+
+            return false;
+        }
+    }
+    
     // Patch that scales down the UI formation positions and character portraits by 70% to fit more on screen.
     // Also prevents the default auto-scaling from affecting any formation other than the Auto formation.
     [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
-    [HarmonyDebug]
     static class Formation_UI_Scale_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
@@ -162,20 +216,15 @@ public static class Main {
 
             var jumptoend = matcher.Operand;                                        // Jumps to final this.m_CharacterContainer.localScale = Vector3.one, required in second edit.
 
-            LogDebug($"First operation: Should be Bge_Un_S - pos = {matcher.Pos}, opcode = {matcher.Opcode}");
-
             matcher.Advance(1)
                 .Insert([
                     new CodeInstruction(OpCodes.Ldarg_1),
                     new CodeInstruction(OpCodes.Brtrue_S, jumptoend)                // Temporarily use this label, replace later after new code added.
                  ]);
 
-            matcher.Advance(3)
+            matcher.Advance(2)
                 .RemoveInstruction()
                 .Insert(new CodeInstruction(OpCodes.Ldc_R4, -170f));                // Replace -185 with -170.
-
-            LogDebug($"First operation pt 2: Should be Ldc_R4 - pos = {matcher.Pos}, opcode = {matcher.Opcode}");
-
 
             /*
             Code for default UI scaling if previous check falls through:
@@ -200,12 +249,9 @@ public static class Main {
 
             matcher.MatchStartForward(new CodeMatch(OpCodes.Call, AccessTools.PropertyGetter(typeof(Vector3), nameof(Vector3.one))))
                 .Advance(-2)
-                .Insert(new CodeInstruction(OpCodes.Ldarg_1))
-                .Advance(1);
+                .Insert(new CodeInstruction(OpCodes.Ldarg_1));
 
             var secondblock = matcher.Pos;                                          // Create a jump offset reference for subsequent label application.
-
-            LogDebug($"Second operation: Should be ??? - pos = {matcher.Pos}, opcode = {matcher.Opcode}");
 
             matcher.Advance(1)
                 .Insert([
@@ -236,22 +282,75 @@ public static class Main {
 
     // Patch that offsets the position of the character icons on the formation UI when the Auto formation tab is active to force them towards the top of the grid,
     // maximising the available space. Dynamically adjusts the offset based on the party size.
-    /*
     [HarmonyPatch(typeof(FormationCharacterVM), nameof(FormationCharacterVM.GetLocalPosition))]
     class Formation_UI_Offset_Patch
     {
-        //Prefix
+        static bool Prefix(ref Vector3 __result, FormationCharacterVM __instance)
+        {
+            int CurrInd = Game.Instance.Player.FormationManager.CurrentFormationIndex;
+            int PtyCnt = Game.Instance.Player.Party.Count;
+            Vector2 CurrPos = __instance.GetOffset();
+            Vector2 AdjPos = CurrPos * 40f;
+            Vector2 DefPos = AdjPos + new Vector2(0f, 138f);
+
+            float offset;
+
+            if (PtyCnt > 18)
+            {
+                offset = 150f;
+            }
+            else if (PtyCnt > 12)
+            {
+                offset = 140;
+            }
+            else if (PtyCnt > 6)
+            {
+                offset = 130;
+            }
+            else if (PtyCnt == 1)
+            {
+                offset = 0;
+            }
+            else
+            {
+                offset = 110;
+            }
+
+            //LogDebug($"Party count = {PtyCnt}, offset = {offset}");
+
+            if (CurrInd == 0)
+            {
+                Vector2 Auto = AdjPos + new Vector2(0f, offset);
+
+                //LogDebug($"Char index = {__instance.m_Index}, name = {__instance.m_Unit.CharacterName}, GetOffset() = {CurrPos}, AdjPos = {AdjPos}, DefPos = {DefPos}, final position = {Auto}");
+
+                __result = Auto;
+            }
+            else
+            {
+                __result = DefPos;
+            }
+
+            return false;
+        }
     }
-    */
 
     // Patch to expand the bounds of the usable formation area back out to the original extents of the grid texture after the Formation_UI_Scale_Patch_PC patch.
     // Allows for the center of character icons to be moved right to the edge of the grid before further movement is clamped.
     // The Auto formation bounds are scaled down slightly from the vanilla values to prevent it pushing outside the grid edges.
-    /*
     [HarmonyPatch(typeof(FormationCharacterDragComponent), nameof(FormationCharacterDragComponent.Initialize))]
     public static class Formation_UI_Grid_Scale_Patch
     {
-        //Postfix
+        [HarmonyPostfix]
+        public static void Initialize(FormationCharacterDragComponent __instance)
+        {
+            int CurrInd = Game.Instance.Player.FormationManager.CurrentFormationIndex;
+
+            if (CurrInd != 0)
+            {
+                __instance.m_MinPosition *= 1.6f;
+                __instance.m_MaxPosition *= 1.6f;
+            }
+        }
     }
-    */
 }
