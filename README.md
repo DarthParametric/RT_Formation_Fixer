@@ -1,4 +1,4 @@
-# Formation Fixer for More Party Slots
+# Formation Fixer for More Party Slots RT
 
 
 
@@ -6,7 +6,7 @@
 
 A mod for Owlcat's Warhammer 40,000 Rogue Trader.
 
-Adjusts the formation templates and UI to allow for larger parties, intended for use in conjunction with ADDB's [More Party Slots](https://www.nexusmods.com/pathfinderwrathoftherighteous/mods/694) mod. Supports up to 24 party members, including pets (double the provision of vanilla).
+Adjusts the formation templates and UI to allow for larger parties, intended for use in conjunction with ADDB's [More Party Slots RT](https://www.nexusmods.com/warhammer40kroguetrader/mods/165) mod. Supports up to 24 party members, including pets (double the provision of vanilla).
 
 By default, the game only handles up to 12 entities in a party formation. Anything beyond that and characters are forced into the same position on top of one another. This mod edits all the custom formations to allow for more characters, adding an additional 12 positions to bring the total to 24. It also adjusts the scaling of the character portraits in the formation manager UI to allow for more space to fit larger parties. Additionally, the settings of the Auto formation have been tweaked to try and better accommodate large parties, and maximise the use of the UI space for it in the formation manager.
 
