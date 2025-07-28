@@ -1,12 +1,16 @@
 ﻿using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem;
+using Kingmaker.Blueprints.Root;
+using Kingmaker.BundlesLoading;
 using Kingmaker.Code.UI.MVVM.View.Formation;
 using Kingmaker.Code.UI.MVVM.View.Formation.Base;
+using Kingmaker.Code.UI.MVVM.View.Formation.Console;
 using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
 using System.Reflection.Emit;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityModManagerNet;
 
 namespace DPFormationFixer;
@@ -32,25 +36,47 @@ public static class Main {
 
     public static void PatchFormationArrays()
     {
+        var BPRoot = ResourcesLibrary.TryGetBlueprint<FormationsRoot>("d5fe855c2ee3dfe4fae440979505dd33");                  // FormationsRoot
         var BPAuto = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("1528ed7057903244f98c2d3c2851b3ec");         // Formation_Auto
-        var BPColumn = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("89afd2b7af61273478e0b8584ae2c60b");       // Formation_Custom_01
+        var BPStar = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("89afd2b7af61273478e0b8584ae2c60b");         // Formation_Custom_01
         var BPTriangle = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("bb3d357f04e7e7b439ddd36c2b123877");     // Formation_Triangle
-        var BPStar = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("cdb4a0c6f7c2faf4f9bfb142ca4caee5");         // Formation_Custom_02
-        var BPWaves = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a38b14ca3fb0c05409c5c8e45fb5687c");        // Formation_Custom_03
-        var BPCircle = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("71bb427a43932424a803f68253d57197");       // Formation_Default
-        //var BPDefault = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a198d360f0d0cc643a1b104d6c5346ac");      // Formation_Followers_Default
+        var BPWaves = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("cdb4a0c6f7c2faf4f9bfb142ca4caee5");        // Formation_Custom_02
+        var BPCircle = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("a38b14ca3fb0c05409c5c8e45fb5687c");       // Formation_Custom_03
+        var BPColumn = ResourcesLibrary.TryGetBlueprint<BlueprintPartyFormation>("71bb427a43932424a803f68253d57197");       // Formation_Default
+        //var BPDefault = ResourcesLibrary.TryGetBlueprint<FollowersFormation>("a198d360f0d0cc643a1b104d6c5346ac");         // Formation_Followers_Default - For pets?
 
         LogDebug("Patching blueprints.");
 
         //                                #1                      #2                      #3                      #4                      #5                      #6                      #7                      #8                      #9                     #10                      #11                     #12                     #13                     #14                     #15                     #16                     #17                    #18                     #19                      #20                     #21                    #22                     #23                     #24
-        BPAuto.Positions =      [new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f)];
-        BPColumn.Positions =    [new(0.000f, 1.200f),	new(-2.000f, 1.200f),	new(2.000f, 1.200f),	new(-4.000f, 1.200f),	new(4.000f, 1.200f),	new(-6.000f, 1.200f),	new(6.000f, 1.200f),	new(0.000f, -0.800f),	new(0.000f, -2.800f),	new(0.000f, -4.800f),	new(0.000f, -6.800f),	new(-6.000f, -0.800f),	new(6.000f, -0.800f),	new(-4.000f, -0.800f),	new(4.000f, -0.800f),	new(-2.000f, -0.800f),	new(2.000f, -0.800f),	new(-2.000f, -2.800f),	new(2.000f, -2.800f),	new(-2.000f, -4.800f),	new(2.000f, -4.800f),	new(-2.000f, -6.800f),	new(2.000f, -6.800f),	new(0.000f, -8.800f)];
-        BPTriangle.Positions =  [new(0.000f, 0.640f),	new(-1.280f, -0.640f),	new(1.280f, -0.640f),	new(-2.560f, -1.920f),	new(2.560f, -1.920f),	new(0.000f, -1.920f),	new(-3.840f, -3.200f),	new(3.840f, -3.200f),	new(-1.280f, -3.200f),	new(1.280f, -3.200f),	new(-5.120f, -4.480f),	new(5.120f, -4.480f),	new(-2.560f, -4.480f),	new(2.560f, -4.480f),	new(0.000f, -4.480f),	new(-6.400f, -5.760f),	new(6.400f, -5.760f),	new(-3.840f, -5.760f),	new(3.840f, -5.760f),	new(-1.280f, -5.760f),	new(1.280f, -5.760f),	new(-5.120f, -7.040f),	new(5.120f, -7.040f),	new(0.000f, -7.040f)];
-        BPStar.Positions =      [new(0.000f, 0.880f),	new(0.000f, -0.780f),	new(0.000f, -2.440f),	new(0.000f, -5.200f),	new(0.000f, -6.860f),	new(-2.620f, -3.840f),	new(2.620f, -3.840f),	new(-0.960f, -3.840f),	new(0.960f, -3.840f),	new(-1.720f, -2.320f),	new(1.720f, -2.320f),	new(-1.720f, -5.360f),	new(1.720f, -5.360f),	new(-2.600f, -0.900f),	new(2.600f, -0.900f),	new(-2.400f, -6.880f),	new(2.400f, -6.880f),	new(-3.400f, 0.600f),	new(3.400f, 0.600f),	new(-3.300f, -8.380f),	new(3.300f, -8.380f),	new(-4.320f, -3.840f),	new(4.320f, -3.840f),	new(0.000f, -8.560f)];
-        BPWaves.Positions =     [new(0.000f, 0.680f),	new(-4.000f, -0.320f),	new(4.000f, -0.320f),	new(0.000f, -1.320f),	new(-4.000f, -2.320f),	new(4.000f, -2.320f),	new(-2.000f, 0.280f),	new(2.000f, 0.280f),	new(-2.000f, -1.720f),	new(2.000f, -1.720f),	new(-4.000f, -4.320f),	new(4.000f, -4.320f),	new(0.000f, -3.320f),	new(-2.000f, -3.720f),	new(2.000f, -3.720f),	new(-4.000f, -6.320f),	new(4.000f, -6.320f),	new(0.000f, -5.320f),	new(-2.000f, -5.720f),	new(2.000f, -5.720f),	new(-4.000f, -8.320f),	new(4.000f, -8.320f),	new(-2.000f, -7.720f),	new(2.000f, -7.720f)];
-        BPCircle.Positions =    [new(0.000f, 0.880f),	new(-3.700f, -0.720f),	new(3.700f, -0.720f),	new(-3.700f, -6.820f),	new(3.700f, -6.820f),	new(0.000f, -8.520f),	new(-2.000f, 0.480f),	new(2.000f, 0.480f),	new(-2.000f, -8.120f),	new(2.000f, -8.120f),	new(-4.700f, -2.720f),	new(4.700f, -2.720f),	new(-4.700f, -4.820f),	new(4.700f, -4.820f),	new(-2.000f, -1.720f),	new(2.000f, -1.720f),	new(-2.000f, -5.820f),	new(2.000f, -5.820f),	new(-3.000f, -3.720f),	new(3.000f, -3.720f),	new(0.000f, -1.120f),	new(0.000f, -6.520f),	new(-1.040f, -3.840f),	new(1.040f, -3.840f)];        
+        BPAuto.Positions =		[new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f),	new(0.000f, 0.000f)];
+        BPColumn.Positions =	[new(0.000f, 0.700f),	new(-1.400f, 0.700f),	new(1.400f, 0.700f),	new(0.000f, -0.600f),	new(-1.400f, -0.600f),	new(1.400f, -0.600f),	new(0.000f, -1.900f),	new(-1.400f, -1.900f),	new(1.400f, -1.900f),	new(0.000f, -3.200f),	new(-1.400f, -3.200f),	new(1.400f, -3.200f),	new(0.000f, -4.500f),	new(-1.400f, -4.500f),	new(1.400f, -4.500f),	new(0.000f, -5.800f),	new(-1.400f, -5.800f),	new(1.400f, -5.800f),	new(0.000f, -7.100f),	new(-1.400f, -7.100f),	new(1.400f, -7.100f),	new(0.000f, -8.400f),	new(-1.400f, -8.400f),	new(1.400f, -8.400f)];
+        BPTriangle.Positions =	[new(0.000f, 0.000f),	new(-0.747f, -1.280f),	new(0.747f, -1.280f),	new(-1.493f, -2.560f),	new(1.493f, -2.560f),	new(0.000f, -2.560f),	new(-2.240f, -3.840f),	new(2.240f, -3.840f),	new(-0.740f, -3.840f),	new(0.740f, -3.840f),	new(-2.987f, -5.120f),	new(2.987f, -5.120f),	new(-1.480f, -5.120f),	new(1.480f, -5.120f),	new(0.000f, -5.120f),	new(-3.733f, -6.400f),	new(3.733f, -6.400f),	new(-2.220f, -6.400f),	new(2.220f, -6.400f),	new(-0.740f, -6.400f),	new(0.740f, -6.400f),	new(-1.920f, -7.680f),	new(1.920f, -7.680f),	new(0.000f, -7.680f)];
+        BPStar.Positions =		[new(0.000f, -0.120f),	new(0.000f, -1.380f),	new(0.000f, -2.640f),	new(0.000f, -5.000f),	new(0.000f, -6.260f),	new(-2.020f, -3.840f),	new(2.020f, -3.840f),	new(-0.760f, -3.840f),	new(0.760f, -3.840f),	new(-1.320f, -2.720f),	new(1.320f, -2.720f),	new(-1.320f, -5.060f),	new(1.320f, -5.060f),	new(-2.000f, -1.700f),	new(2.000f, -1.700f),	new(-2.000f, -6.180f),	new(2.000f, -6.180f),	new(-2.000f, -6.180f),	new(2.000f, -6.180f),	new(-2.600f, -7.280f),	new(2.600f, -7.280f),	new(-3.320f, -3.840f),	new(3.320f, -3.840f),	new(0.000f, -7.560f)];
+        BPWaves.Positions =		[new(0.000f, -0.520f),	new(-2.800f, -1.520f),	new(2.800f, -1.520f),	new(0.000f, -1.920f),	new(-2.800f, -2.920f),	new(2.800f, -2.920f),	new(-1.400f, -0.920f),	new(1.400f, -0.920f),	new(-1.400f, -2.320f),	new(1.400f, -2.320f),	new(-2.800f, -4.320f),	new(2.800f, -4.320f),	new(0.000f, -3.320f),	new(-1.400f, -3.720f),	new(1.400f, -3.720f),	new(-2.800f, -5.720f),	new(2.800f, -5.720f),	new(0.000f, -4.720f),	new(-1.400f, -5.120f),	new(1.400f, -5.120f),	new(-2.800f, -7.120f),	new(2.800f, -7.120f),	new(-1.400f, -6.520f),	new(1.400f, -6.520f)];
+        BPCircle.Positions =	[new(0.000f, -0.990f),	new(-2.015f, -1.825f),	new(2.015f, -1.825f),	new(-2.850f, -3.840f),	new(2.850f, -3.840f),	new(0.000f, -6.690f),	new(-2.015f, -5.855f),	new(2.015f, -5.855f),	new(-1.124f, -1.195f),	new(1.124f, -1.195f),	new(-1.091f, -6.473f),	new(1.091f, -6.473f),	new(-2.633f, -2.749f),	new(2.633f, -2.749f),	new(-2.633f, -4.931f),	new(2.633f, -4.931f),	new(-1.061f, -2.779f),	new(1.061f, -2.779f),	new(-1.061f, -4.901f),	new(1.061f, -4.901f),	new(0.000f, -2.340f),	new(0.019f, -5.340f),	new(-1.500f, -3.840f),	new(1.500f, -3.840f)];
+        
+        BPRoot.AutoFormation.SpaceX = 1.25f;         // Default is 2.0 - Kingmaker.Formations.PartyAutoFormationHelper uses these when assembling the auto formation.
+        BPRoot.AutoFormation.SpaceY = 1.25f;         // Default is 2.0
 
         LogDebug($"Patched blueprint array counts: Auto - {BPAuto.Positions.Length}, Column - {BPColumn.Positions.Length}, Triangle - {BPTriangle.Positions.Length}, Star - {BPStar.Positions.Length}, Waves - {BPWaves.Positions.Length}, Circle - {BPCircle.Positions.Length}.");
+    }
+
+    // Stolen from - https://discussions.unity.com/t/scale-around-point-similar-to-rotate-around/531171/5
+    public static void ScaleAround(GameObject target, Vector3 pivot, Vector3 newScale)
+    {
+        Vector3 A = target.transform.localPosition;
+        Vector3 B = pivot;
+
+        Vector3 C = A - B; // Diff from object pivot to desired pivot/origin
+
+        float RS = newScale.x / target.transform.localScale.x; // Relative scale factor
+
+        // Calc final position post-scale
+        Vector3 FP = B + C * RS;
+
+        // Finally, actually perform the scale/translation
+        target.transform.localScale = newScale;
+        target.transform.localPosition = FP;
     }
 
     public static void LogDebug(string message)
@@ -173,110 +199,40 @@ public static class Main {
             return false;
         }
     }
-    
+
     // Patch that scales down the UI formation positions and character portraits by 70% to fit more on screen.
     // Also prevents the default auto-scaling from affecting any formation other than the Auto formation.
     [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
     static class Formation_UI_Scale_Patch
     {
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+        static bool Prefix(int formationPresetIndex, FormationBaseView __instance)
         {
-
-            CodeMatcher matcher = new(instructions, il);
-
-            /*
-            Code for whether to scale the UI condition check. Based on lowest Y position on UI of current party members:
-
-	            if (num1 < -185.0)
-
-                IL_0061: ldloc.0
-                IL_0062: ldc.r4     -185
-                IL_0067: bge.un =>  Label4
-
-            Change it to:
+            float num1 = 0f;
             
-	            if (num < -170f && formationPresetIndex == 0)
+            foreach (FormationCharacterVM Char in __instance.ViewModel.Characters)
+            {
+                Vector3 localPosition = Char.GetLocalPosition();
+                
+                if (localPosition.y < num1)
+                {
+                    num1 = localPosition.y;
+                }
+            }
 
-            Ensures it only applies to the Auto formation. Additionally, change the -185 with -170 to scale it sooner to try
-            and prevent the formation going past the bottom edge of the grid.
+            RectTransform charcont = __instance.m_CharacterContainer;
+            Vector3 scalefac = new Vector3(0.7f, 0.7f, 1f);
 
-            This needs to be subsequently edited again in order to redirect the jumps to a later addition.
-            */
+            for (int i = 0; i < charcont.childCount; i++)
+            {
+                var child = charcont.GetChild(i);
+                    
+                if (child.name.Contains("FormationCharacter"))
+                {
+                    ScaleAround(child.gameObject, charcont.localPosition, scalefac);
+                }
+            }
 
-            matcher.MatchStartForward(
-                new CodeMatch(OpCodes.Ldloc_0),
-                new CodeMatch(OpCodes.Ldc_R4, -185f),
-                new CodeMatch(OpCodes.Bge_Un_S)
-            );
-
-            matcher.Advance(1)
-                .RemoveInstruction()
-                .Insert(new CodeInstruction(OpCodes.Ldc_R4, -170f))                 // Replace -185 with -170.
-                .Advance(1);
-
-            var jumptoend = matcher.Operand;                                        // Jumps to final this.m_CharacterContainer.localScale = Vector3.one, required in second edit.
-
-            matcher.Advance(1)
-                .Insert([
-                    new CodeInstruction(OpCodes.Ldarg_1),
-                    new CodeInstruction(OpCodes.Brtrue_S, jumptoend)                // Temporarily use this label, replace later after new code added.
-                 ]);
-
-            matcher.Advance(2)
-                .RemoveInstruction()
-                .Insert(new CodeInstruction(OpCodes.Ldc_R4, -170f));                // Replace -185 with -170.
-
-            /*
-            Code for default UI scaling if previous check falls through:
-
-                this.m_CharacterContainer.localScale = Vector3.one
-
-                IL_009C: ldfld      UnityEngine.RectTransform Kingmaker.UI.MVVM._PCView.Formation.FormationPCView::m_CharacterContainer
-                IL_00A1: call       static UnityEngine.Vector3 UnityEngine.Vector3::get_one()
-                IL_00A6: callvirt   System.Void UnityEngine.Transform::set_localScale(UnityEngine.Vector3 value)
-
-            Change this to:
-
-	            if (formationPresetIndex != 0)
-	            {
-		            this.m_CharacterContainer.localScale = new Vector3(0.7f, 0.7f, 1f);
-		            return;
-	            }
-	            this.m_CharacterContainer.localScale = Vector3.one;
-
-            Scales down the UI for custom formations to a fixed 70% but ensures the Auto formation retains the vanilla behaviour.
-            */
-
-            matcher.MatchStartForward(new CodeMatch(OpCodes.Call, AccessTools.PropertyGetter(typeof(Vector3), nameof(Vector3.one))))
-                .Advance(-2)
-                .Insert(new CodeInstruction(OpCodes.Ldarg_1));
-
-            var secondblock = matcher.Pos;                                          // Create a jump offset reference for subsequent label application.
-
-            matcher.Advance(1)
-                .Insert([
-                    new CodeInstruction(OpCodes.Brfalse_S, jumptoend),
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(FormationBaseView), nameof(FormationBaseView.m_CharacterContainer))),
-                    new CodeInstruction(OpCodes.Ldc_R4, 0.7f),
-                    new CodeInstruction(OpCodes.Ldc_R4, 0.7f),
-                    new CodeInstruction(OpCodes.Ldc_R4, 1.0f),
-                    new CodeInstruction(OpCodes.Newobj, AccessTools.Constructor(typeof(Vector3), [typeof(float), typeof(float), typeof(float)])),
-                    new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertySetter(typeof(Transform), "localScale")),
-                    new CodeInstruction(OpCodes.Ret)
-                ]);
-
-            matcher.Start()                                                         // Return to the first section to change the jump offsets so they can reach the above added code.
-                .MatchEndForward(
-                    new CodeMatch(OpCodes.Ldloc_0),
-                    new CodeMatch(OpCodes.Ldc_R4, -170f),                           // Need to use the new value we changed this to earlier (originally -185).
-                    new CodeMatch(OpCodes.Bge_Un_S)
-                )
-                .SetJumpTo(OpCodes.Bge_Un_S, secondblock, out _)
-                .Advance(2)
-                .SetJumpTo(OpCodes.Brtrue_S, secondblock, out _);
-
-            return matcher.InstructionEnumeration();
+            return false;
         }
     }
 
@@ -335,21 +291,110 @@ public static class Main {
         }
     }
 
-    // Patch to expand the bounds of the usable formation area back out to the original extents of the grid texture after the Formation_UI_Scale_Patch_PC patch.
-    // Allows for the center of character icons to be moved right to the edge of the grid before further movement is clamped.
-    // The Auto formation bounds are scaled down slightly from the vanilla values to prevent it pushing outside the grid edges.
-    [HarmonyPatch(typeof(FormationCharacterDragComponent), nameof(FormationCharacterDragComponent.Initialize))]
-    public static class Formation_UI_Grid_Scale_Patch
+    // Change this to the same as the Wrath equivalent to prevent an endless loop causing a lockup/freeze when switching to the Auto tab.
+    [HarmonyPatch(typeof(FormationCharacterBaseView), nameof(FormationCharacterBaseView.SetupPosition))]
+    class GetLocalPosition_AntiFreeze_Patch
+    {
+        static bool Prefix(FormationCharacterBaseView __instance)
+        {
+            __instance.transform.localPosition = __instance.ViewModel.GetLocalPosition();
+
+            return false;
+        }
+    }
+
+    // Replaces the surrounds for the character icons in the formation UI with something more low profile to allow for closer spacing.
+    [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
+    public static class Formation_Surround_Patch
     {
         [HarmonyPostfix]
-        public static void Initialize(FormationCharacterDragComponent __instance)
+        static void OnFormationPresetChanged(int formationPresetIndex, FormationBaseView __instance)
         {
-            int CurrInd = Game.Instance.Player.FormationManager.CurrentFormationIndex;
+            LogDebug("FormationCharacterBaseView.OnFormationPresetChanged: Starting UI character icon surrounds patch.");
 
-            if (CurrInd != 0)
+            try
             {
-                __instance.m_MinPosition *= 1.6f;
-                __instance.m_MaxPosition *= 1.6f;
+                LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
+
+                var view = __instance;
+
+                LogDebug($"Current view is {view}");
+                
+                try
+                {
+                    var uibundle = BundlesLoadService.Instance.RequestBundle("ui");
+
+                    if (view.ToString().Contains("Console"))
+                    {
+                        var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
+
+                        LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
+                    }
+                    else
+                    {
+                        var ChrList = (AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as List<FormationCharacterPCView>);
+
+                        LogDebug($"Found valid FormationCharacterPCView character list, length is {ChrList.Count}");
+
+                        if (ChrList.Count > 0)
+                        {
+                            for (int i = 0; i < ChrList.Count; i++)
+                            {
+                                var Char = ChrList[i];
+
+                                //LogDebug($"Editing character {i + 1} of {ChrList.Count}");
+
+                                var button = Char.m_Button;
+                                var end = string.Empty;
+
+                                if (button != null)
+                                {
+                                    var origsprite = button.GetComponent<Image>().sprite;
+                                    var origspname = origsprite.name;
+                                    end = $", image = {origspname} - replacing";
+
+                                    if (origspname != "UIDecal_Target")
+                                    {
+                                        try
+                                        {
+                                            var newsprite = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
+                                            var newname = newsprite.name;
+                                            end += $" with {newname}";
+
+                                            button.GetComponent<Image>().sprite = newsprite;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Log.Log($"Caught exception trying to load sprite:\n{ex}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        end = " - already patched, skipping.";
+                                    }
+
+                                    //LogDebug($"Found m_Button{end}");
+                                }
+                                else
+                                {
+                                    LogDebug("Character m_Button not found!");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            LogDebug("Character list is empty!");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Log($"Caught exception trying to load the UI bundle:\n{ex}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Log($"Caught exception trying to grab character list:\n{ex}");
             }
         }
     }
