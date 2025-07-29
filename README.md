@@ -23,3 +23,6 @@ By default, the game only handles up to 12 entities in a party formation. Anythi
 - Should work with both the keyboard/mouse and controller UI schemes.
 
 ## Thanks & Acknowledgements
+- microsoftenator2022 - Helped out with creating my first transpiler for Wrath and various aspects of the Wrath Formation Fixer mod. Helped out a lot for the RT version with correcting my syntax goofs and providing the solution to a particularly vexing code insertion translation.
+- Kurufinve - Helped pin down the root issue with the formation UI window not updating with the mod's changes immediately on opening and offered critique on bundle/asset loading (or more specifically my poor implementation thereof).
+- Everyone in the `#mod-dev-technical` channel of the Owlcat Discord server for various modding-related discussions and suggestions, help troubleshooting issues, and answering general questions.

@@ -37,6 +37,13 @@
 	<ItemGroup>
 		<None Include="Info.json" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
 	</ItemGroup>
+	<Target Name="EmptyModDir" BeforeTargets="Build">
+		<ItemGroup>
+			<ModDir Include="$(RogueTraderData)\UnityModManager\$(AssemblyName)\*.*" Exclude="$(RogueTraderData)\UnityModManager\$(AssemblyName)\Settings.xml" />
+		</ItemGroup>
+		
+		<Delete Files="@(ModDir)" />
+	</Target>
 	<Target Name="Deploy" AfterTargets="Build">
 		<ItemGroup>
 			<Files Include="$(TargetDir)\**\*.*" />
@@ -79,9 +86,6 @@
 &lt;/Project&gt;" Overwrite="true" Encoding="utf-8" />
 	</Target>
 	<Target Name="DeleteFiles" BeforeTargets="Clean">
-		<ItemGroup>
-			<PropsFile Include="GamePath.props" />
-		</ItemGroup>
 		<ItemGroup>
 			<ExportDir Include="$(SolutionDir)_Export\*.zip" />
 		</ItemGroup>

@@ -8,18 +8,22 @@ using Kingmaker.Code.UI.MVVM.View.Formation.Base;
 using Kingmaker.Code.UI.MVVM.View.Formation.Console;
 using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
+using Owlcat.Runtime.UI.MVVM;
 using System.Reflection.Emit;
+using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityModManagerNet;
 
 namespace DPFormationFixer;
 
-public static class Main {
+public static class Main
+{
     internal static Harmony HarmonyInstance;
     internal static UnityModManager.ModEntry.ModLogger Log;
 
-    public static bool Load(UnityModManager.ModEntry modEntry) {
+    public static bool Load(UnityModManager.ModEntry modEntry)
+    {
         Log = modEntry.Logger;
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         try
@@ -54,7 +58,7 @@ public static class Main {
         BPStar.Positions =		[new(0.000f, -0.120f),	new(0.000f, -1.380f),	new(0.000f, -2.640f),	new(0.000f, -5.000f),	new(0.000f, -6.260f),	new(-2.020f, -3.840f),	new(2.020f, -3.840f),	new(-0.760f, -3.840f),	new(0.760f, -3.840f),	new(-1.320f, -2.720f),	new(1.320f, -2.720f),	new(-1.320f, -5.060f),	new(1.320f, -5.060f),	new(-2.000f, -1.700f),	new(2.000f, -1.700f),	new(-2.000f, -6.180f),	new(2.000f, -6.180f),	new(-2.000f, -6.180f),	new(2.000f, -6.180f),	new(-2.600f, -7.280f),	new(2.600f, -7.280f),	new(-3.320f, -3.840f),	new(3.320f, -3.840f),	new(0.000f, -7.560f)];
         BPWaves.Positions =		[new(0.000f, -0.520f),	new(-2.800f, -1.520f),	new(2.800f, -1.520f),	new(0.000f, -1.920f),	new(-2.800f, -2.920f),	new(2.800f, -2.920f),	new(-1.400f, -0.920f),	new(1.400f, -0.920f),	new(-1.400f, -2.320f),	new(1.400f, -2.320f),	new(-2.800f, -4.320f),	new(2.800f, -4.320f),	new(0.000f, -3.320f),	new(-1.400f, -3.720f),	new(1.400f, -3.720f),	new(-2.800f, -5.720f),	new(2.800f, -5.720f),	new(0.000f, -4.720f),	new(-1.400f, -5.120f),	new(1.400f, -5.120f),	new(-2.800f, -7.120f),	new(2.800f, -7.120f),	new(-1.400f, -6.520f),	new(1.400f, -6.520f)];
         BPCircle.Positions =	[new(0.000f, -0.990f),	new(-2.015f, -1.825f),	new(2.015f, -1.825f),	new(-2.850f, -3.840f),	new(2.850f, -3.840f),	new(0.000f, -6.690f),	new(-2.015f, -5.855f),	new(2.015f, -5.855f),	new(-1.124f, -1.195f),	new(1.124f, -1.195f),	new(-1.091f, -6.473f),	new(1.091f, -6.473f),	new(-2.633f, -2.749f),	new(2.633f, -2.749f),	new(-2.633f, -4.931f),	new(2.633f, -4.931f),	new(-1.061f, -2.779f),	new(1.061f, -2.779f),	new(-1.061f, -4.901f),	new(1.061f, -4.901f),	new(0.000f, -2.340f),	new(0.019f, -5.340f),	new(-1.500f, -3.840f),	new(1.500f, -3.840f)];
-        
+
         BPRoot.AutoFormation.SpaceX = 1.25f;         // Default is 2.0 - Kingmaker.Formations.PartyAutoFormationHelper uses these when assembling the auto formation.
         BPRoot.AutoFormation.SpaceY = 1.25f;         // Default is 2.0
 
@@ -205,14 +209,14 @@ public static class Main {
     [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
     static class Formation_UI_Scale_Patch
     {
-        static bool Prefix(int formationPresetIndex, FormationBaseView __instance)
+        static bool Prefix(FormationBaseView __instance)
         {
             float num1 = 0f;
-            
+
             foreach (FormationCharacterVM Char in __instance.ViewModel.Characters)
             {
                 Vector3 localPosition = Char.GetLocalPosition();
-                
+
                 if (localPosition.y < num1)
                 {
                     num1 = localPosition.y;
@@ -220,12 +224,12 @@ public static class Main {
             }
 
             RectTransform charcont = __instance.m_CharacterContainer;
-            Vector3 scalefac = new Vector3(0.7f, 0.7f, 1f);
+            Vector3 scalefac = new(0.7f, 0.7f, 1f);
 
             for (int i = 0; i < charcont.childCount; i++)
             {
                 var child = charcont.GetChild(i);
-                    
+
                 if (child.name.Contains("FormationCharacter"))
                 {
                     ScaleAround(child.gameObject, charcont.localPosition, scalefac);
@@ -319,7 +323,7 @@ public static class Main {
                 var view = __instance;
 
                 LogDebug($"Current view is {view}");
-                
+
                 try
                 {
                     var uibundle = BundlesLoadService.Instance.RequestBundle("ui");
@@ -398,4 +402,77 @@ public static class Main {
             }
         }
     }
+
+    // Makes the BindViewImplementation subscribe to OnFormationPresetIndexChanged like it does in Wrath. Fixes the formation UI needing to be updated to trigger
+    // the mod's changes taking effect.
+    [HarmonyPatch(typeof(FormationPCView), nameof(FormationPCView.BindViewImplementation))]
+    static class Formation_PCView_BindView_Patch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            /*
+            Add in the subscription to OnFormationPresetIndexChanged from the equivalent Wrath UI code:
+
+                base.AddDisposable(base.ViewModel.SelectedFormationPresetIndex.Subscribe(new Action<int>(this.OnFormationPresetIndexChanged)));
+
+                IL_0124: ldarg.0
+                IL_0125: ldarg.0
+                IL_0126: call      instance !0 class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::get_ViewModel()
+                IL_012B: callvirt  instance class [UniRx]UniRx.IReadOnlyReactiveProperty`1<int32> Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM::get_SelectedFormationPresetIndex()
+                IL_0130: ldarg.0
+                IL_0131: dup
+                IL_0132: ldvirtftn instance void Kingmaker.Code.UI.MVVM.View.Formation.Base.FormationBaseView::OnFormationPresetIndexChanged(int32)
+                IL_0138: newobj    instance void class [mscorlib]System.Action`1<int32>::.ctor(object, native int)
+                IL_013D: call      class [mscorlib]System.IDisposable [UniRx]UniRx.ObservableExtensions::Subscribe<int32>(class [mscorlib]System.IObservable`1<!!0>, class [mscorlib]System.Action`1<!!0>)
+                IL_0142: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
+            */
+
+            CodeMatcher matcher = new(instructions);
+
+            matcher.Start();
+
+            matcher.MatchEndForward([
+                new CodeMatch(OpCodes.Ldloca_S),
+                new CodeMatch(OpCodes.Constrained),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Endfinally)
+                ]);
+
+            matcher.Advance(2)                                                      // Move past an existing ldarg.0 to preserve its label so the previous code can jump to it.
+                .Insert([
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Call, AccessTools.PropertyGetter(typeof(ViewBase<FormationVM>), "ViewModel")),
+                    new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(FormationVM), "SelectedFormationPresetIndex")),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Dup),
+                    new CodeInstruction(OpCodes.Ldvirtftn, AccessTools.Method(typeof(FormationBaseView), "OnFormationPresetIndexChanged")),
+                    new CodeInstruction(OpCodes.Newobj, AccessTools.Constructor(typeof(Action<int>), [typeof(object), typeof(IntPtr)])),
+                    new CodeInstruction(OpCodes.Call, typeof(ObservableExtensions)
+                        .GetMethods()
+                        .Single(m => m.Name == nameof(ObservableExtensions.Subscribe) && m.GetParameters().Length == 2).MakeGenericMethod([typeof(int)])),
+                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
+                    new CodeInstruction(OpCodes.Ldarg_0)                            // Add a replacement for the vanilla ldarg.0 with the label that was stolen.
+                ]);
+
+            return matcher.InstructionEnumeration();
+        }
+    }
+
+    // ConsoleView equivalent of the above patch.
+    /*
+    [HarmonyPatch(typeof(FormationConsoleView), nameof(FormationPCView.BindViewImplementation))]
+    [HarmonyDebug]
+    static class Formation_ConsoleView_BindView_Patch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+
+            CodeMatcher matcher = new(instructions);
+
+
+
+            return matcher.InstructionEnumeration();
+        }
+    }
+    */
 }
