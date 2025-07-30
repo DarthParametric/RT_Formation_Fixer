@@ -186,7 +186,7 @@ public static class Main
             int i = 0;
             int num = ((line.Count > 5) ? Math.Min(6, line.Count) : Math.Min(4, line.Count));
 
-            while (i < line.Count)
+			while (i < line.Count)
             {
                 float num2 = -PartyAutoFormationHelper.SpaceX / 2f * (float)(num - 1);
                 for (int j = i; j < i + num; j++)
@@ -205,28 +205,28 @@ public static class Main
     }
 
     // Patch that scales down the UI formation positions and character portraits by 70% to fit more on screen.
-    // Also prevents the default auto-scaling from affecting any formation other than the Auto formation.
+    // Also removes the vanilla auto-scaling behaviour, since that also shrinks the grid texture.
     [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
     static class Formation_UI_Scale_Patch
     {
-        static bool Prefix(FormationBaseView __instance)
+        static bool Prefix(int formationPresetIndex, FormationBaseView __instance)
         {
-            float num1 = 0f;
-
-            foreach (FormationCharacterVM Char in __instance.ViewModel.Characters)
-            {
-                Vector3 localPosition = Char.GetLocalPosition();
-
-                if (localPosition.y < num1)
-                {
-                    num1 = localPosition.y;
-                }
-            }
-
             RectTransform charcont = __instance.m_CharacterContainer;
-            Vector3 scalefac = new(0.7f, 0.7f, 1f);
+			var children = charcont.childCount;
+			Vector3 scalefac = new(0.7f, 0.7f, 1f);
 
-            for (int i = 0; i < charcont.childCount; i++)
+			LogDebug("FormationCharacterBaseView.OnFormationPresetChanged Prefix patch started:");
+
+			if (children == 0)
+			{
+				LogDebug($"m_CharacterContainer has no children!");
+			}
+			else if (children < 3)
+			{
+				LogDebug($"m_CharacterContainer has no characters!");
+			}
+
+			for (int i = 0; i < children; i++)
             {
                 var child = charcont.GetChild(i);
 
@@ -236,12 +236,99 @@ public static class Main
                 }
             }
 
+			try
+			{
+				LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
+
+				var view = __instance;
+				var modetype = Game.Instance.CurrentMode.GetType();
+				var contmode = Game.Instance.m_ControllerMode;
+
+				LogDebug($"Current view is {view}, CurrentMode = {modetype}, ControllerMode = {contmode}");
+
+				try
+				{
+					var uibundle = BundlesLoadService.Instance.RequestBundle("ui");
+
+					if (view.ToString().Contains("Console"))
+					{
+						var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
+
+						LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
+					}
+					else
+					{
+						var ChrList = (AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as List<FormationCharacterPCView>);
+
+						LogDebug($"Found valid FormationCharacterPCView character list, length is {ChrList.Count}");
+
+						if (ChrList.Count > 0)
+						{
+							for (int i = 0; i < ChrList.Count; i++)
+							{
+								var Char = ChrList[i];
+
+								//LogDebug($"Editing character {i + 1} of {ChrList.Count}");
+
+								var button = Char.m_Button;
+								var end = string.Empty;
+
+								if (button != null)
+								{
+									var origsprite = button.GetComponent<Image>().sprite;
+									var origspname = origsprite.name;
+									end = $", image = {origspname} - replacing";
+
+									if (origspname != "UIDecal_Target")
+									{
+										try
+										{
+											var newsprite = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
+											var newname = newsprite.name;
+											end += $" with {newname}";
+
+											button.GetComponent<Image>().sprite = newsprite;
+										}
+										catch (Exception ex)
+										{
+											Log.Log($"Caught exception trying to load sprite:\n{ex}");
+										}
+									}
+									else
+									{
+										end = " - already patched, skipping.";
+									}
+
+									//LogDebug($"Found m_Button{end}");
+								}
+								else
+								{
+									LogDebug("Character m_Button not found!");
+								}
+							}
+						}
+						else
+						{
+							LogDebug("Character list is empty!");
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Log($"Caught exception trying to load the UI bundle:\n{ex}");
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Log($"Caught exception trying to grab character list:\n{ex}");
+			}
+
             return false;
         }
     }
 
-    // Patch that offsets the position of the character icons on the formation UI when the Auto formation tab is active to force them towards the top of the grid,
-    // maximising the available space. Dynamically adjusts the offset based on the party size.
+    // Patch that offsets the position of the character icons on the formation UI when the Auto formation tab is active to force them
+    // towards the top of the grid, maximising the available space. Dynamically adjusts the offset based on the party size.
     [HarmonyPatch(typeof(FormationCharacterVM), nameof(FormationCharacterVM.GetLocalPosition))]
     class Formation_UI_Offset_Patch
     {
@@ -253,7 +340,7 @@ public static class Main
             Vector2 AdjPos = CurrPos * 40f;
             Vector2 DefPos = AdjPos + new Vector2(0f, 138f);
 
-            float offset;
+			float offset;
 
             if (PtyCnt > 18)
             {
@@ -303,119 +390,32 @@ public static class Main
         {
             __instance.transform.localPosition = __instance.ViewModel.GetLocalPosition();
 
-            return false;
-        }
-    }
-
-    // Replaces the surrounds for the character icons in the formation UI with something more low profile to allow for closer spacing.
-    [HarmonyPatch(typeof(FormationBaseView), nameof(FormationBaseView.OnFormationPresetChanged))]
-    public static class Formation_Surround_Patch
-    {
-        [HarmonyPostfix]
-        static void OnFormationPresetChanged(int formationPresetIndex, FormationBaseView __instance)
-        {
-            LogDebug("FormationCharacterBaseView.OnFormationPresetChanged: Starting UI character icon surrounds patch.");
-
-            try
-            {
-                LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
-
-                var view = __instance;
-                var modetype = Game.Instance.CurrentMode.GetType();
-                var contmode = Game.Instance.m_ControllerMode;
-
-                LogDebug($"Current view is {view}, CurrentMode = {modetype}, ControllerMode = {contmode}");
-
-                try
-                {
-                    var uibundle = BundlesLoadService.Instance.RequestBundle("ui");
-
-                    if (view.ToString().Contains("Console"))
-                    {
-                        var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
-
-                        LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
-                    }
-                    else
-                    {
-                        var ChrList = (AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as List<FormationCharacterPCView>);
-
-                        LogDebug($"Found valid FormationCharacterPCView character list, length is {ChrList.Count}");
-
-                        if (ChrList.Count > 0)
-                        {
-                            for (int i = 0; i < ChrList.Count; i++)
-                            {
-                                var Char = ChrList[i];
-
-                                //LogDebug($"Editing character {i + 1} of {ChrList.Count}");
-
-                                var button = Char.m_Button;
-                                var end = string.Empty;
-
-                                if (button != null)
-                                {
-                                    var origsprite = button.GetComponent<Image>().sprite;
-                                    var origspname = origsprite.name;
-                                    end = $", image = {origspname} - replacing";
-
-                                    if (origspname != "UIDecal_Target")
-                                    {
-                                        try
-                                        {
-                                            var newsprite = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
-                                            var newname = newsprite.name;
-                                            end += $" with {newname}";
-
-                                            button.GetComponent<Image>().sprite = newsprite;
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Log.Log($"Caught exception trying to load sprite:\n{ex}");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        end = " - already patched, skipping.";
-                                    }
-
-                                    //LogDebug($"Found m_Button{end}");
-                                }
-                                else
-                                {
-                                    LogDebug("Character m_Button not found!");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            LogDebug("Character list is empty!");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Log($"Caught exception trying to load the UI bundle:\n{ex}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Log($"Caught exception trying to grab character list:\n{ex}");
-            }
+			return false;
         }
     }
 
     // Makes the BindViewImplementation subscribe to OnFormationPresetIndexChanged and OnFormationPresetChanged like it does in Wrath. Fixes the
     // formation UI needing to be updated to trigger the mod's changes taking effect.
     [HarmonyPatch(typeof(FormationPCView), nameof(FormationPCView.BindViewImplementation))]
-    [HarmonyDebug]
     static class Formation_PCView_BindView_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             /*
-            
-             
+            Add in the subscription to OnFormationPresetIndexChanged from the equivalent Wrath UI code:
+
+                base.AddDisposable(base.ViewModel.SelectedFormationPresetIndex.Subscribe(new Action<int>(this.OnFormationPresetIndexChanged)));
+				
+                IL_0124: ldarg.0
+                IL_0125: ldarg.0
+                IL_0126: call      instance !0 class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::get_ViewModel()
+                IL_012B: callvirt  instance class [UniRx]UniRx.IReadOnlyReactiveProperty`1<int32> Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM::get_SelectedFormationPresetIndex()
+                IL_0130: ldarg.0
+                IL_0131: dup
+                IL_0132: ldvirtftn instance void Kingmaker.Code.UI.MVVM.View.Formation.Base.FormationBaseView::OnFormationPresetIndexChanged(int32)
+                IL_0138: newobj    instance void class [mscorlib]System.Action`1<int32>::.ctor(object, native int)
+                IL_013D: call      class [mscorlib]System.IDisposable [UniRx]UniRx.ObservableExtensions::Subscribe<int32>(class [mscorlib]System.IObservable`1<!!0>, class [mscorlib]System.Action`1<!!0>)
+                IL_0142: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
             */
 
             CodeMatcher matcher = new(instructions);
@@ -453,24 +453,23 @@ public static class Main
                     new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
                 ]);
 
-            /*
-            Add in the subscription to OnFormationPresetIndexChanged from the equivalent Wrath UI code:
+			/*
+            Add in the subscription to OnFormationPresetChanged from the equivalent Wrath UI code:
 
-                base.AddDisposable(base.ViewModel.SelectedFormationPresetIndex.Subscribe(new Action<int>(this.OnFormationPresetIndexChanged)));
-
-                IL_0124: ldarg.0
-                IL_0125: ldarg.0
-                IL_0126: call      instance !0 class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::get_ViewModel()
-                IL_012B: callvirt  instance class [UniRx]UniRx.IReadOnlyReactiveProperty`1<int32> Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM::get_SelectedFormationPresetIndex()
-                IL_0130: ldarg.0
-                IL_0131: dup
-                IL_0132: ldvirtftn instance void Kingmaker.Code.UI.MVVM.View.Formation.Base.FormationBaseView::OnFormationPresetIndexChanged(int32)
-                IL_0138: newobj    instance void class [mscorlib]System.Action`1<int32>::.ctor(object, native int)
-                IL_013D: call      class [mscorlib]System.IDisposable [UniRx]UniRx.ObservableExtensions::Subscribe<int32>(class [mscorlib]System.IObservable`1<!!0>, class [mscorlib]System.Action`1<!!0>)
-                IL_0142: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
+                base.AddDisposable(base.ViewModel.SelectedFormationPresetIndex.Subscribe(new Action<int>(base.OnFormationPresetChanged)));
+				
+				IL_0124: ldarg.0
+				IL_0125: ldarg.0
+				IL_0126: call      instance !0 class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::get_ViewModel()
+				IL_012B: callvirt  instance class [UniRx]UniRx.IReadOnlyReactiveProperty`1<int32> Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM::get_SelectedFormationPresetIndex()
+				IL_0130: ldarg.0
+				IL_0131: ldftn     instance void Kingmaker.Code.UI.MVVM.View.Formation.Base.FormationBaseView::OnFormationPresetChanged(int32)
+				IL_0137: newobj    instance void class [mscorlib]System.Action`1<int32>::.ctor(object, native int)
+				IL_013C: call      class [mscorlib]System.IDisposable [UniRx]UniRx.ObservableExtensions::Subscribe<int32>(class [mscorlib]System.IObservable`1<!!0>, class [mscorlib]System.Action`1<!!0>)
+				IL_0141: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
             */
 
-            matcher.MatchEndForward([                                               // Find the next insertion point.
+			matcher.MatchEndForward([                                               // Find the next insertion point.
                 new CodeMatch(OpCodes.Ldloca_S),
                 new CodeMatch(OpCodes.Constrained),
                 new CodeMatch(OpCodes.Callvirt),
