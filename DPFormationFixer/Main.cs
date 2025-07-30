@@ -6,8 +6,10 @@ using Kingmaker.BundlesLoading;
 using Kingmaker.Code.UI.MVVM.View.Formation;
 using Kingmaker.Code.UI.MVVM.View.Formation.Base;
 using Kingmaker.Code.UI.MVVM.View.Formation.Console;
+using Kingmaker.Code.UI.MVVM.View.ServiceWindows.CharacterInfo.Sections.LevelClassScores;
 using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
+using Owlcat.Runtime.UI.Controls.Button;
 using Owlcat.Runtime.UI.MVVM;
 using System.Reflection.Emit;
 using UniRx;
@@ -21,6 +23,7 @@ public static class Main
 {
     internal static Harmony HarmonyInstance;
     internal static UnityModManager.ModEntry.ModLogger Log;
+	public static Sprite NewCharBorder;
 
     public static bool Load(UnityModManager.ModEntry modEntry)
     {
@@ -83,7 +86,24 @@ public static class Main
         target.transform.localPosition = FP;
     }
 
-    public static void LogDebug(string message)
+	public static void GrabSpriteFromBundle()
+	{
+		try
+		{
+			//AssetBundle uibundle = BundlesLoadService.Instance.RequestBundle("ui");
+			AssetBundle uibundle = BundlesLoadService.Instance.RequestBundle(AssetBundleNames.UIArt);
+			NewCharBorder = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
+			UnityEngine.Object.DontDestroyOnLoad(NewCharBorder);
+
+			LogDebug($"Storing {NewCharBorder.GetType()} asset {NewCharBorder.name}, AssetID \"6a9f2f0c67731f6468cb0d346dda9ae8\".");
+		}
+		catch (Exception ex)
+		{
+			Log.Log($"Caught exception trying to load new sprite:\n{ex}");
+		}
+	}
+
+	public static void LogDebug(string message)
     {
 #if DEBUG
         try
@@ -116,7 +136,8 @@ public static class Main
                 Initialized = true;
 
                 PatchFormationArrays();
-            }
+				GrabSpriteFromBundle();
+			}
             catch (Exception e)
             {
                 Log.Log($"Mod initialisation failed with exception \n{e}");
@@ -217,11 +238,7 @@ public static class Main
 
 			LogDebug("FormationCharacterBaseView.OnFormationPresetChanged Prefix patch started:");
 
-			if (children == 0)
-			{
-				LogDebug($"m_CharacterContainer has no children!");
-			}
-			else if (children < 3)
+			if (children < 3)
 			{
 				LogDebug($"m_CharacterContainer has no characters!");
 			}
@@ -233,8 +250,8 @@ public static class Main
                 if (child.name.Contains("FormationCharacter"))
                 {
                     ScaleAround(child.gameObject, charcont.localPosition, scalefac);
-                }
-            }
+				}
+			}
 
 			try
 			{
@@ -244,11 +261,11 @@ public static class Main
 				var modetype = Game.Instance.CurrentMode.GetType();
 				var contmode = Game.Instance.m_ControllerMode;
 
-				LogDebug($"Current view is {view}, CurrentMode = {modetype}, ControllerMode = {contmode}");
+				LogDebug($"Current view is {view}, ControllerMode = {contmode}");
 
 				try
 				{
-					var uibundle = BundlesLoadService.Instance.RequestBundle("ui");
+					//var charlist2 = (AccessTools.Field(typeof(FormationBaseView), "m_Characters").GetValue(__instance) as List<FormationCharacterBaseView>);
 
 					if (view.ToString().Contains("Console"))
 					{
@@ -267,9 +284,6 @@ public static class Main
 							for (int i = 0; i < ChrList.Count; i++)
 							{
 								var Char = ChrList[i];
-
-								//LogDebug($"Editing character {i + 1} of {ChrList.Count}");
-
 								var button = Char.m_Button;
 								var end = string.Empty;
 
@@ -283,11 +297,10 @@ public static class Main
 									{
 										try
 										{
-											var newsprite = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
-											var newname = newsprite.name;
+											var newname = NewCharBorder.name;
 											end += $" with {newname}";
 
-											button.GetComponent<Image>().sprite = newsprite;
+											button.GetComponent<Image>().sprite = NewCharBorder;
 										}
 										catch (Exception ex)
 										{
