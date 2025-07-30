@@ -321,8 +321,10 @@ public static class Main
                 LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
 
                 var view = __instance;
+                var modetype = Game.Instance.CurrentMode.GetType();
+                var contmode = Game.Instance.m_ControllerMode;
 
-                LogDebug($"Current view is {view}");
+                LogDebug($"Current view is {view}, CurrentMode = {modetype}, ControllerMode = {contmode}");
 
                 try
                 {
@@ -403,13 +405,54 @@ public static class Main
         }
     }
 
-    // Makes the BindViewImplementation subscribe to OnFormationPresetIndexChanged like it does in Wrath. Fixes the formation UI needing to be updated to trigger
-    // the mod's changes taking effect.
+    // Makes the BindViewImplementation subscribe to OnFormationPresetIndexChanged and OnFormationPresetChanged like it does in Wrath. Fixes the
+    // formation UI needing to be updated to trigger the mod's changes taking effect.
     [HarmonyPatch(typeof(FormationPCView), nameof(FormationPCView.BindViewImplementation))]
+    [HarmonyDebug]
     static class Formation_PCView_BindView_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
+            /*
+            
+             
+            */
+
+            CodeMatcher matcher = new(instructions);
+            
+            matcher.Start();
+
+            matcher.MatchEndForward([
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Call),
+                new CodeMatch(OpCodes.Call),
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Ldc_I4_0),
+                new CodeMatch(OpCodes.Callvirt),
+                new CodeMatch(OpCodes.Call),
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Ldfld),
+                new CodeMatch(OpCodes.Ldc_I4_0),
+                new CodeMatch(OpCodes.Callvirt)
+                ]);
+
+            matcher.Advance(1)
+                .Insert([
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Call, AccessTools.PropertyGetter(typeof(ViewBase<FormationVM>), "ViewModel")),
+                    new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(FormationVM), "SelectedFormationPresetIndex")),
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    new CodeInstruction(OpCodes.Dup),
+                    new CodeInstruction(OpCodes.Ldvirtftn, AccessTools.Method(typeof(FormationBaseView), "OnFormationPresetIndexChanged")),
+                    new CodeInstruction(OpCodes.Newobj, AccessTools.Constructor(typeof(Action<int>), [typeof(object), typeof(IntPtr)])),
+                    new CodeInstruction(OpCodes.Call, typeof(ObservableExtensions)
+                        .GetMethods()
+                        .Single(m => m.Name == nameof(ObservableExtensions.Subscribe) && m.GetParameters().Length == 2).MakeGenericMethod([typeof(int)])),
+                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
+                ]);
+
             /*
             Add in the subscription to OnFormationPresetIndexChanged from the equivalent Wrath UI code:
 
@@ -427,11 +470,7 @@ public static class Main
                 IL_0142: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
             */
 
-            CodeMatcher matcher = new(instructions);
-
-            matcher.Start();
-
-            matcher.MatchEndForward([
+            matcher.MatchEndForward([                                               // Find the next insertion point.
                 new CodeMatch(OpCodes.Ldloca_S),
                 new CodeMatch(OpCodes.Constrained),
                 new CodeMatch(OpCodes.Callvirt),
@@ -444,8 +483,7 @@ public static class Main
                     new CodeInstruction(OpCodes.Call, AccessTools.PropertyGetter(typeof(ViewBase<FormationVM>), "ViewModel")),
                     new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(FormationVM), "SelectedFormationPresetIndex")),
                     new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Dup),
-                    new CodeInstruction(OpCodes.Ldvirtftn, AccessTools.Method(typeof(FormationBaseView), "OnFormationPresetIndexChanged")),
+                    new CodeInstruction(OpCodes.Ldftn, AccessTools.Method(typeof(FormationBaseView), "OnFormationPresetChanged")),
                     new CodeInstruction(OpCodes.Newobj, AccessTools.Constructor(typeof(Action<int>), [typeof(object), typeof(IntPtr)])),
                     new CodeInstruction(OpCodes.Call, typeof(ObservableExtensions)
                         .GetMethods()
