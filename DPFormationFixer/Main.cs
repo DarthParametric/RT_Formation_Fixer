@@ -11,6 +11,7 @@ using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
 using Owlcat.Runtime.UI.Controls.Button;
 using Owlcat.Runtime.UI.MVVM;
+using System.Collections.Generic;
 using System.Reflection.Emit;
 using UniRx;
 using UnityEngine;
@@ -90,7 +91,6 @@ public static class Main
 	{
 		try
 		{
-			//AssetBundle uibundle = BundlesLoadService.Instance.RequestBundle("ui");
 			AssetBundle uibundle = BundlesLoadService.Instance.RequestBundle(AssetBundleNames.UIArt);
 			NewCharBorder = uibundle.LoadAsset<Sprite>("6a9f2f0c67731f6468cb0d346dda9ae8");
 			UnityEngine.Object.DontDestroyOnLoad(NewCharBorder);
@@ -247,7 +247,7 @@ public static class Main
             {
                 var child = charcont.GetChild(i);
 
-                if (child.name.Contains("FormationCharacter"))
+				if (child.name.Contains("FormationCharacter"))
                 {
                     ScaleAround(child.gameObject, charcont.localPosition, scalefac);
 				}
@@ -255,25 +255,16 @@ public static class Main
 
 			try
 			{
-				LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
-
-				var view = __instance;
-				var modetype = Game.Instance.CurrentMode.GetType();
 				var contmode = Game.Instance.m_ControllerMode;
 
-				LogDebug($"Current view is {view}, ControllerMode = {contmode}");
+				LogDebug($"Formation preset number is {formationPresetIndex}. Checking for formation character list.");
+				LogDebug($"Current view is {__instance}, ControllerMode = {contmode}");
 
 				try
 				{
 					//var charlist2 = (AccessTools.Field(typeof(FormationBaseView), "m_Characters").GetValue(__instance) as List<FormationCharacterBaseView>);
 
-					if (view.ToString().Contains("Console"))
-					{
-						var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
-
-						LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
-					}
-					else
+					if (contmode.ToString().Contains("Mouse"))
 					{
 						var ChrList = (AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as List<FormationCharacterPCView>);
 
@@ -281,6 +272,8 @@ public static class Main
 
 						if (ChrList.Count > 0)
 						{
+							LogDebug("Checking character surround sprites.");
+
 							for (int i = 0; i < ChrList.Count; i++)
 							{
 								var Char = ChrList[i];
@@ -289,22 +282,20 @@ public static class Main
 
 								if (button != null)
 								{
-									var origsprite = button.GetComponent<Image>().sprite;
-									var origspname = origsprite.name;
+									var origspname = button.GetComponent<Image>().sprite.name;
 									end = $", image = {origspname} - replacing";
 
 									if (origspname != "UIDecal_Target")
 									{
 										try
 										{
-											var newname = NewCharBorder.name;
-											end += $" with {newname}";
+											end += $" with {NewCharBorder.name}";
 
 											button.GetComponent<Image>().sprite = NewCharBorder;
 										}
 										catch (Exception ex)
 										{
-											Log.Log($"Caught exception trying to load sprite:\n{ex}");
+											Log.Log($"Caught exception trying to replace surround sprite:\n{ex}");
 										}
 									}
 									else
@@ -324,6 +315,12 @@ public static class Main
 						{
 							LogDebug("Character list is empty!");
 						}
+					}
+					else
+					{
+						var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
+
+						LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
 					}
 				}
 				catch (Exception ex)
