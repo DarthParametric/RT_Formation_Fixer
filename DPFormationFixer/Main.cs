@@ -267,9 +267,12 @@ public static class Main
 					if (contmode.ToString().Contains("Mouse"))
 					{
 						IEnumerable<FormationCharacterBaseView> ChrList = null;
-						if (__instance is FormationPCView pcView) {
+						if (__instance is FormationPCView pcView)
+						{
 							ChrList = pcView.m_Characters;
-						} else if (__instance is FormationConsoleView consoleView) {
+						}
+						else if (__instance is FormationConsoleView consoleView)
+						{
 							ChrList = consoleView.m_Characters;
 						}
 						var num = ChrList.Count();
