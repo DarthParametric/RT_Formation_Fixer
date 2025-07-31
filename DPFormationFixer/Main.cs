@@ -266,8 +266,12 @@ public static class Main
 
 					if (contmode.ToString().Contains("Mouse"))
 					{
-						var ChrList = AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as IEnumerable<FormationCharacterBaseView>;
-						ChrList ??= AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as IEnumerable<FormationCharacterBaseView>;
+						IEnumerable<FormationCharacterBaseView> ChrList = null;
+						if (__instance is FormationPCView pcView) {
+							ChrList = pcView.m_Characters;
+						} else if (__instance is FormationConsoleView consoleView) {
+							ChrList = consoleView.m_Characters;
+						}
 						var num = ChrList.Count();
 						LogDebug($"Found valid FormationCharacterPCView character list, length is {num}");
 
