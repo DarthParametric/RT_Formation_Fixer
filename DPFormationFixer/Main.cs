@@ -266,17 +266,24 @@ public static class Main
 
 					if (contmode.ToString().Contains("Mouse"))
 					{
-						var ChrList = (AccessTools.Field(typeof(FormationPCView), "m_Characters").GetValue(__instance) as List<FormationCharacterPCView>);
+						IEnumerable<FormationCharacterBaseView> ChrList = null;
+						if (__instance is FormationPCView pcView)
+						{
+							ChrList = pcView.m_Characters;
+						}
+						else if (__instance is FormationConsoleView consoleView)
+						{
+							ChrList = consoleView.m_Characters;
+						}
+						var num = ChrList.Count();
+						LogDebug($"Found valid FormationCharacterPCView character list, length is {num}");
 
-						LogDebug($"Found valid FormationCharacterPCView character list, length is {ChrList.Count}");
-
-						if (ChrList.Count > 0)
+						if (num > 0)
 						{
 							LogDebug("Checking character surround sprites.");
 
-							for (int i = 0; i < ChrList.Count; i++)
+							foreach (var Char in ChrList)
 							{
-								var Char = ChrList[i];
 								var button = Char.m_Button;
 								var end = string.Empty;
 
