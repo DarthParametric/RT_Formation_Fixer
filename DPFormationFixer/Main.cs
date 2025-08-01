@@ -262,72 +262,63 @@ public static class Main
 
 				try
 				{
-					//var charlist2 = (AccessTools.Field(typeof(FormationBaseView), "m_Characters").GetValue(__instance) as List<FormationCharacterBaseView>);
-
-					if (contmode.ToString().Contains("Mouse"))
+					IEnumerable<FormationCharacterBaseView> ChrList = null;
+					if (__instance is FormationPCView pcView)
 					{
-						IEnumerable<FormationCharacterBaseView> ChrList = null;
-						if (__instance is FormationPCView pcView)
-						{
-							ChrList = pcView.m_Characters;
-						}
-						else if (__instance is FormationConsoleView consoleView)
-						{
-							ChrList = consoleView.m_Characters;
-						}
-						var num = ChrList.Count();
-						LogDebug($"Found valid FormationCharacterPCView character list, length is {num}");
+						ChrList = pcView.m_Characters;
+					}
+					else if (__instance is FormationConsoleView consoleView)
+					{
+						ChrList = consoleView.m_Characters;
+					}
 
-						if (num > 0)
-						{
-							LogDebug("Checking character surround sprites.");
+					var num = ChrList.Count();
 
-							foreach (var Char in ChrList)
+					LogDebug($"Found valid {ChrList.GetType()} character list, length is {num}");
+
+					if (num > 0)
+					{
+						LogDebug("Checking character surround sprites.");
+
+						foreach (var Char in ChrList)
+						{
+							var button = Char.m_Button;
+							var end = string.Empty;
+
+							if (button != null)
 							{
-								var button = Char.m_Button;
-								var end = string.Empty;
+								var origspname = button.GetComponent<Image>().sprite.name;
+								end = $", image = {origspname} - replacing";
 
-								if (button != null)
+								if (origspname != "UIDecal_Target")
 								{
-									var origspname = button.GetComponent<Image>().sprite.name;
-									end = $", image = {origspname} - replacing";
-
-									if (origspname != "UIDecal_Target")
+									try
 									{
-										try
-										{
-											end += $" with {NewCharBorder.name}";
+										end += $" with {NewCharBorder.name}";
 
-											button.GetComponent<Image>().sprite = NewCharBorder;
-										}
-										catch (Exception ex)
-										{
-											Log.Log($"Caught exception trying to replace surround sprite:\n{ex}");
-										}
+										button.GetComponent<Image>().sprite = NewCharBorder;
 									}
-									else
+									catch (Exception ex)
 									{
-										end = " - already patched, skipping.";
+										Log.Log($"Caught exception trying to replace surround sprite:\n{ex}");
 									}
-
-									//LogDebug($"Found m_Button{end}");
 								}
 								else
 								{
-									LogDebug("Character m_Button not found!");
+									end = " - already patched, skipping.";
 								}
+
+								//LogDebug($"Found m_Button{end}");
 							}
-						}
-						else
-						{
-							LogDebug("Character list is empty!");
+							else
+							{
+								LogDebug("Character m_Button not found!");
+							}
 						}
 					}
 					else
 					{
-						var ChrList = (AccessTools.Field(typeof(FormationConsoleView), "m_Characters").GetValue(__instance) as List<FormationCharacterConsoleView>);
-
-						LogDebug($"Found valid FormationCharacterConsoleView character list, length is {ChrList.Count}");
+						LogDebug("Character list is empty!");
 					}
 				}
 				catch (Exception ex)
@@ -436,10 +427,14 @@ public static class Main
             */
 
             CodeMatcher matcher = new(instructions);
-            
-            matcher.Start();
 
-            matcher.MatchEndForward([
+			matcher.Start();
+
+			/*
+
+			//UNNEEDED?
+
+			matcher.MatchEndForward([
                 new CodeMatch(OpCodes.Ldarg_0),
                 new CodeMatch(OpCodes.Call),
                 new CodeMatch(OpCodes.Call),
@@ -469,6 +464,8 @@ public static class Main
                         .Single(m => m.Name == nameof(ObservableExtensions.Subscribe) && m.GetParameters().Length == 2).MakeGenericMethod([typeof(int)])),
                     new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
                 ]);
+
+			*/
 
 			/*
             Add in the subscription to OnFormationPresetChanged from the equivalent Wrath UI code:
@@ -512,9 +509,9 @@ public static class Main
         }
     }
 
-    // ConsoleView equivalent of the above patch.
-    /*
-    [HarmonyPatch(typeof(FormationConsoleView), nameof(FormationPCView.BindViewImplementation))]
+	// ConsoleView equivalent of the above patch.
+	/*
+    [HarmonyPatch(typeof(FormationConsoleView), nameof(FormationConsoleView.BindViewImplementation))]
     [HarmonyDebug]
     static class Formation_ConsoleView_BindView_Patch
     {
