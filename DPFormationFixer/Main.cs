@@ -6,12 +6,10 @@ using Kingmaker.BundlesLoading;
 using Kingmaker.Code.UI.MVVM.View.Formation;
 using Kingmaker.Code.UI.MVVM.View.Formation.Base;
 using Kingmaker.Code.UI.MVVM.View.Formation.Console;
-using Kingmaker.Code.UI.MVVM.View.ServiceWindows.CharacterInfo.Sections.LevelClassScores;
 using Kingmaker.Code.UI.MVVM.VM.Formation;
 using Kingmaker.Formations;
-using Owlcat.Runtime.UI.Controls.Button;
+using Kingmaker.UI.Common;
 using Owlcat.Runtime.UI.MVVM;
-using System.Collections.Generic;
 using System.Reflection.Emit;
 using UniRx;
 using UnityEngine;
@@ -232,7 +230,30 @@ public static class Main
     {
         static bool Prefix(int formationPresetIndex, FormationBaseView __instance)
         {
-            RectTransform charcont = __instance.m_CharacterContainer;
+			/*
+			Vanilla code:
+
+				float num = 0f;
+				foreach (FormationCharacterVM character in base.ViewModel.Characters)
+				{
+					Vector3 localPosition = character.GetLocalPosition();
+					if (localPosition.y < num)
+					{
+						num = localPosition.y;
+					}
+				}
+				if (num < -185f)
+				{
+					float num2 = -185f / num;
+					m_CharacterContainer.localScale = new Vector3(num2, num2, m_CharacterContainer.localScale.z);
+				}
+				else
+				{
+					m_CharacterContainer.localScale = Vector3.one;
+				}
+			*/
+
+			RectTransform charcont = __instance.m_CharacterContainer;
 			var children = charcont.childCount;
 			Vector3 scalefac = new(0.7f, 0.7f, 1f);
 
@@ -356,19 +377,19 @@ public static class Main
             }
             else if (PtyCnt > 12)
             {
-                offset = 140;
+                offset = 140f;
             }
             else if (PtyCnt > 6)
             {
-                offset = 130;
+                offset = 130f;
             }
             else if (PtyCnt == 1)
             {
-                offset = 0;
+                offset = 0f;
             }
             else
             {
-                offset = 110;
+                offset = 110f;
             }
 
             //LogDebug($"Party count = {PtyCnt}, offset = {offset}");
@@ -396,76 +417,34 @@ public static class Main
     {
         static bool Prefix(FormationCharacterBaseView __instance)
         {
-            __instance.transform.localPosition = __instance.ViewModel.GetLocalPosition();
+			/*
+			Vanilla code:
+
+				Vector3 localPosition = base.ViewModel.GetLocalPosition();
+				localPosition.x -= localPosition.x % 23f;
+				localPosition.y -= localPosition.y % 23f;
+				base.transform.localPosition = localPosition;
+				if (base.ViewModel.GetLocalPosition() == localPosition)
+				{
+					return;
+				}
+				base.ViewModel.MoveCharacter((localPosition - base.ViewModel.OffsetPosition) / 40f);
+			*/
+
+			__instance.transform.localPosition = __instance.ViewModel.GetLocalPosition();
 
 			return false;
         }
     }
 
-    // Makes the BindViewImplementation subscribe to OnFormationPresetIndexChanged and OnFormationPresetChanged like it does in Wrath. Fixes the
-    // formation UI needing to be updated to trigger the mod's changes taking effect.
-    [HarmonyPatch(typeof(FormationPCView), nameof(FormationPCView.BindViewImplementation))]
+	// Makes the BindViewImplementation subscribe to OnFormationPresetChanged like it does in Wrath. Fixes the formation UI needing to
+	// be updated to trigger the changes to character icon scale and surround sprite taking effect.
+	[HarmonyPatch(typeof(FormationPCView), nameof(FormationPCView.BindViewImplementation))]
     static class Formation_PCView_BindView_Patch
     {
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            /*
-            Add in the subscription to OnFormationPresetIndexChanged from the equivalent Wrath UI code:
-
-                base.AddDisposable(base.ViewModel.SelectedFormationPresetIndex.Subscribe(new Action<int>(this.OnFormationPresetIndexChanged)));
-				
-                IL_0124: ldarg.0
-                IL_0125: ldarg.0
-                IL_0126: call      instance !0 class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::get_ViewModel()
-                IL_012B: callvirt  instance class [UniRx]UniRx.IReadOnlyReactiveProperty`1<int32> Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM::get_SelectedFormationPresetIndex()
-                IL_0130: ldarg.0
-                IL_0131: dup
-                IL_0132: ldvirtftn instance void Kingmaker.Code.UI.MVVM.View.Formation.Base.FormationBaseView::OnFormationPresetIndexChanged(int32)
-                IL_0138: newobj    instance void class [mscorlib]System.Action`1<int32>::.ctor(object, native int)
-                IL_013D: call      class [mscorlib]System.IDisposable [UniRx]UniRx.ObservableExtensions::Subscribe<int32>(class [mscorlib]System.IObservable`1<!!0>, class [mscorlib]System.Action`1<!!0>)
-                IL_0142: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
-            */
-
             CodeMatcher matcher = new(instructions);
-
-			matcher.Start();
-
-			/*
-
-			//UNNEEDED?
-
-			matcher.MatchEndForward([
-                new CodeMatch(OpCodes.Ldarg_0),
-                new CodeMatch(OpCodes.Call),
-                new CodeMatch(OpCodes.Call),
-                new CodeMatch(OpCodes.Ldarg_0),
-                new CodeMatch(OpCodes.Ldfld),
-                new CodeMatch(OpCodes.Ldc_I4_0),
-                new CodeMatch(OpCodes.Callvirt),
-                new CodeMatch(OpCodes.Call),
-                new CodeMatch(OpCodes.Ldarg_0),
-                new CodeMatch(OpCodes.Ldfld),
-                new CodeMatch(OpCodes.Ldc_I4_0),
-                new CodeMatch(OpCodes.Callvirt)
-                ]);
-
-            matcher.Advance(1)
-                .Insert([
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Call, AccessTools.PropertyGetter(typeof(ViewBase<FormationVM>), "ViewModel")),
-                    new CodeInstruction(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(FormationVM), "SelectedFormationPresetIndex")),
-                    new CodeInstruction(OpCodes.Ldarg_0),
-                    new CodeInstruction(OpCodes.Dup),
-                    new CodeInstruction(OpCodes.Ldvirtftn, AccessTools.Method(typeof(FormationBaseView), "OnFormationPresetIndexChanged")),
-                    new CodeInstruction(OpCodes.Newobj, AccessTools.Constructor(typeof(Action<int>), [typeof(object), typeof(IntPtr)])),
-                    new CodeInstruction(OpCodes.Call, typeof(ObservableExtensions)
-                        .GetMethods()
-                        .Single(m => m.Name == nameof(ObservableExtensions.Subscribe) && m.GetParameters().Length == 2).MakeGenericMethod([typeof(int)])),
-                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
-                ]);
-
-			*/
 
 			/*
             Add in the subscription to OnFormationPresetChanged from the equivalent Wrath UI code:
@@ -483,13 +462,15 @@ public static class Main
 				IL_0141: call      instance void class [Owlcat.Runtime.UI]Owlcat.Runtime.UI.MVVM.ViewBase`1<class Kingmaker.Code.UI.MVVM.VM.Formation.FormationVM>::AddDisposable(class [mscorlib]System.IDisposable)
             */
 
-			matcher.MatchEndForward([                                               // Find the next insertion point.
+			//matcher.Start();
+
+			matcher.MatchEndForward([                                               // Find the insertion point.
                 new CodeMatch(OpCodes.Ldloca_S),
                 new CodeMatch(OpCodes.Constrained),
                 new CodeMatch(OpCodes.Callvirt),
                 new CodeMatch(OpCodes.Endfinally)
                 ]);
-
+			
             matcher.Advance(2)                                                      // Move past an existing ldarg.0 to preserve its label so the previous code can jump to it.
                 .Insert([
                     new CodeInstruction(OpCodes.Ldarg_0),
@@ -504,8 +485,8 @@ public static class Main
                     new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ViewBase<FormationVM>), nameof(ViewBase<FormationVM>.AddDisposable))),
                     new CodeInstruction(OpCodes.Ldarg_0)                            // Add a replacement for the vanilla ldarg.0 with the label that was stolen.
                 ]);
-
-            return matcher.InstructionEnumeration();
+			
+			return matcher.InstructionEnumeration();
         }
     }
 
